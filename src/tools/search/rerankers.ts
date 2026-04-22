@@ -49,7 +49,9 @@ export class JinaReranker extends BaseReranker {
     documents: string[],
     topK: number = 5
   ): Promise<t.Highlight[]> {
-    this.logger.debug(`Reranking ${documents.length} chunks with Jina using API URL: ${this.apiUrl}`);
+    this.logger.debug(
+      `Reranking ${documents.length} chunks with Jina using API URL: ${this.apiUrl}`
+    );
 
     try {
       if (this.apiKey == null || this.apiKey === '') {
@@ -201,6 +203,36 @@ export class InfinityReranker extends BaseReranker {
 }
 
 /**
+ * Keenable reranker. Keenable's /v1/search endpoint already returns
+ * relevance-ordered results with query-highlighted snippets, so reranking is
+ * a no-op: we return the documents in their original order with a uniform
+ * score. Exists so Keenable can satisfy the reranker-category auth check
+ * using the same KEENABLE_API_KEY as the provider + scraper.
+ */
+export class KeenableReranker extends BaseReranker {
+  constructor({
+    apiKey = process.env.KEENABLE_API_KEY,
+    logger,
+  }: {
+    apiKey?: string;
+    logger?: t.Logger;
+  }) {
+    super(logger);
+    this.apiKey = apiKey;
+  }
+
+  async rerank(
+    _query: string,
+    documents: string[],
+    topK: number = 5
+  ): Promise<t.Highlight[]> {
+    return documents
+      .slice(0, Math.min(topK, documents.length))
+      .map((doc) => ({ text: doc, score: 1 }));
+  }
+}
+
+/**
  * Creates the appropriate reranker based on type and configuration
  */
 export const createReranker = (config: {
@@ -208,16 +240,28 @@ export const createReranker = (config: {
   jinaApiKey?: string;
   jinaApiUrl?: string;
   cohereApiKey?: string;
+  keenableApiKey?: string;
   logger?: t.Logger;
 }): BaseReranker | undefined => {
-  const { rerankerType, jinaApiKey, jinaApiUrl, cohereApiKey, logger } = config;
+  const {
+    rerankerType,
+    jinaApiKey,
+    jinaApiUrl,
+    cohereApiKey,
+    keenableApiKey,
+    logger,
+  } = config;
 
   // Create a default logger if none is provided
   const defaultLogger = logger || createDefaultLogger();
 
   switch (rerankerType.toLowerCase()) {
   case 'jina':
-    return new JinaReranker({ apiKey: jinaApiKey, apiUrl: jinaApiUrl, logger: defaultLogger });
+    return new JinaReranker({
+      apiKey: jinaApiKey,
+      apiUrl: jinaApiUrl,
+      logger: defaultLogger,
+    });
   case 'cohere':
     return new CohereReranker({
       apiKey: cohereApiKey,
@@ -225,6 +269,11 @@ export const createReranker = (config: {
     });
   case 'infinity':
     return new InfinityReranker(defaultLogger);
+  case 'keenable':
+    return new KeenableReranker({
+      apiKey: keenableApiKey,
+      logger: defaultLogger,
+    });
   case 'none':
     defaultLogger.debug('Skipping reranking as reranker is set to "none"');
     return undefined;
@@ -232,7 +281,11 @@ export const createReranker = (config: {
     defaultLogger.warn(
       `Unknown reranker type: ${rerankerType}. Defaulting to InfinityReranker.`
     );
-    return new JinaReranker({ apiKey: jinaApiKey, apiUrl: jinaApiUrl, logger: defaultLogger });
+    return new JinaReranker({
+      apiKey: jinaApiKey,
+      apiUrl: jinaApiUrl,
+      logger: defaultLogger,
+    });
   }
 };
 

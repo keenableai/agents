@@ -3,9 +3,9 @@ import type { RunnableConfig } from '@langchain/core/runnables';
 import type { BaseReranker } from './rerankers';
 import { DATE_RANGE } from './schema';
 
-export type SearchProvider = 'serper' | 'searxng';
-export type ScraperProvider = 'firecrawl' | 'serper';
-export type RerankerType = 'infinity' | 'jina' | 'cohere' | 'none';
+export type SearchProvider = 'serper' | 'searxng' | 'keenable';
+export type ScraperProvider = 'firecrawl' | 'serper' | 'keenable';
+export type RerankerType = 'infinity' | 'jina' | 'cohere' | 'keenable' | 'none';
 
 export interface Highlight {
   score: number;
@@ -45,6 +45,8 @@ export interface SearchResultData {
   peopleAlsoAsk?: PeopleAlsoAskResult[];
   relatedSearches?: Array<{ query: string }>;
   references?: ResultReference[];
+  /** Wall-clock duration (ms) of the full web_search tool call. */
+  durationMs?: number;
   error?: string;
 }
 
@@ -67,6 +69,8 @@ export interface SearchConfig {
   serperApiKey?: string;
   searxngInstanceUrl?: string;
   searxngApiKey?: string;
+  keenableApiKey?: string;
+  keenableApiUrl?: string;
 }
 
 export type References = {
@@ -182,16 +186,19 @@ export type UsedReferences = {
 }[];
 
 /** Base Scraper Interface */
+export type AnyScrapeResponse =
+  | FirecrawlScrapeResponse
+  | SerperScrapeResponse
+  | import('./keenable').KeenableScrapeResponse;
+
 export interface BaseScraper {
   scrapeUrl(
     url: string,
     options?: unknown
-  ): Promise<[string, FirecrawlScrapeResponse | SerperScrapeResponse]>;
-  extractContent(
-    response: FirecrawlScrapeResponse | SerperScrapeResponse
-  ): [string, undefined | References];
+  ): Promise<[string, AnyScrapeResponse]>;
+  extractContent(response: AnyScrapeResponse): [string, undefined | References];
   extractMetadata(
-    response: FirecrawlScrapeResponse | SerperScrapeResponse
+    response: AnyScrapeResponse
   ):
     | ScrapeMetadata
     | Record<string, string | number | boolean | null | undefined>;

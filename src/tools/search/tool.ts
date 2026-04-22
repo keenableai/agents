@@ -15,6 +15,7 @@ import {
 import { createSearchAPI, createSourceProcessor } from './search';
 import { createSerperScraper } from './serper-scraper';
 import { createFirecrawlScraper } from './firecrawl';
+import { createKeenableScraper } from './keenable';
 import { expandHighlights } from './highlights';
 import { formatResultsForLLM } from './format';
 import { createDefaultLogger } from './utils';
@@ -279,6 +280,7 @@ function createTool({
       const params = rawParams as SearchToolParams;
       const { query, date, country: _c, images, videos, news } = params;
       const country = typeof _c === 'string' && _c ? _c : undefined;
+      const startTime = Date.now();
       const searchResult = await search({
         query,
         date,
@@ -291,9 +293,15 @@ function createTool({
           onSearchResults: _onSearchResults,
         }),
       });
+      const durationMs = Date.now() - startTime;
       const turn = runnableConfig.toolCall?.turn ?? 0;
       const { output, references } = formatResultsForLLM(turn, searchResult);
-      const data: t.SearchResultData = { turn, ...searchResult, references };
+      const data: t.SearchResultData = {
+        turn,
+        ...searchResult,
+        references,
+        durationMs,
+      };
       return [output, { [Constants.WEB_SEARCH]: data }];
     },
     {
@@ -351,6 +359,8 @@ export const createSearchTool = (
     serperApiKey,
     searxngInstanceUrl,
     searxngApiKey,
+    keenableApiKey,
+    keenableApiUrl,
     rerankerType = 'cohere',
     topResults = 5,
     strategies = ['no_extraction'],
@@ -395,6 +405,8 @@ export const createSearchTool = (
     serperApiKey,
     searxngInstanceUrl,
     searxngApiKey,
+    keenableApiKey,
+    keenableApiUrl,
   });
 
   /** Create scraper based on scraperProvider */
@@ -405,6 +417,13 @@ export const createSearchTool = (
       ...serperScraperOptions,
       apiKey: serperApiKey,
       timeout: scraperTimeout ?? serperScraperOptions?.timeout,
+      logger,
+    });
+  } else if (scraperProvider === 'keenable') {
+    scraperInstance = createKeenableScraper({
+      keenableApiKey,
+      keenableApiUrl,
+      timeout: scraperTimeout,
       logger,
     });
   } else {
@@ -424,6 +443,7 @@ export const createSearchTool = (
     jinaApiKey,
     jinaApiUrl,
     cohereApiKey,
+    keenableApiKey,
     logger,
   });
 
