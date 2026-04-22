@@ -3,6 +3,7 @@ import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import type * as t from './types';
 import { getAttribution, createDefaultLogger } from './utils';
 import { BaseReranker } from './rerankers';
+import { createKeenableSearchAPI } from './keenable';
 
 const chunker = {
   cleanText: (text: string): string => {
@@ -418,15 +419,20 @@ export const createSearchAPI = (
     serperApiKey,
     searxngInstanceUrl,
     searxngApiKey,
+    keenableApiKey,
+    keenableApiUrl,
   } = config;
 
-  if (searchProvider.toLowerCase() === 'serper') {
+  const providerKey = searchProvider.toLowerCase();
+  if (providerKey === 'serper') {
     return createSerperAPI(serperApiKey);
-  } else if (searchProvider.toLowerCase() === 'searxng') {
+  } else if (providerKey === 'searxng') {
     return createSearXNGAPI(searxngInstanceUrl, searxngApiKey);
+  } else if (providerKey === 'keenable') {
+    return createKeenableSearchAPI({ keenableApiKey, keenableApiUrl });
   } else {
     throw new Error(
-      `Invalid search provider: ${searchProvider}. Must be 'serper' or 'searxng'`
+      `Invalid search provider: ${searchProvider}. Must be 'serper', 'searxng', or 'keenable'`
     );
   }
 };

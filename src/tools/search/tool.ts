@@ -15,6 +15,7 @@ import {
 import { createSearchAPI, createSourceProcessor } from './search';
 import { createSerperScraper } from './serper-scraper';
 import { createFirecrawlScraper } from './firecrawl';
+import { createKeenableScraper } from './keenable';
 import { expandHighlights } from './highlights';
 import { formatResultsForLLM } from './format';
 import { createDefaultLogger } from './utils';
@@ -351,6 +352,8 @@ export const createSearchTool = (
     serperApiKey,
     searxngInstanceUrl,
     searxngApiKey,
+    keenableApiKey,
+    keenableApiUrl,
     rerankerType = 'cohere',
     topResults = 5,
     strategies = ['no_extraction'],
@@ -395,6 +398,8 @@ export const createSearchTool = (
     serperApiKey,
     searxngInstanceUrl,
     searxngApiKey,
+    keenableApiKey,
+    keenableApiUrl,
   });
 
   /** Create scraper based on scraperProvider */
@@ -405,6 +410,13 @@ export const createSearchTool = (
       ...serperScraperOptions,
       apiKey: serperApiKey,
       timeout: scraperTimeout ?? serperScraperOptions?.timeout,
+      logger,
+    });
+  } else if (scraperProvider === 'keenable') {
+    scraperInstance = createKeenableScraper({
+      keenableApiKey,
+      keenableApiUrl,
+      timeout: scraperTimeout,
       logger,
     });
   } else {
