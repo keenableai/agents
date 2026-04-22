@@ -5,7 +5,7 @@ import { DATE_RANGE } from './schema';
 
 export type SearchProvider = 'serper' | 'searxng' | 'keenable';
 export type ScraperProvider = 'firecrawl' | 'serper' | 'keenable';
-export type RerankerType = 'infinity' | 'jina' | 'cohere' | 'none';
+export type RerankerType = 'infinity' | 'jina' | 'cohere' | 'keenable' | 'none';
 
 export interface Highlight {
   score: number;
@@ -45,6 +45,8 @@ export interface SearchResultData {
   peopleAlsoAsk?: PeopleAlsoAskResult[];
   relatedSearches?: Array<{ query: string }>;
   references?: ResultReference[];
+  /** Wall-clock duration (ms) of the full web_search tool call. */
+  durationMs?: number;
   error?: string;
 }
 

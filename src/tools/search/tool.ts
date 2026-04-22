@@ -280,6 +280,7 @@ function createTool({
       const params = rawParams as SearchToolParams;
       const { query, date, country: _c, images, videos, news } = params;
       const country = typeof _c === 'string' && _c ? _c : undefined;
+      const startTime = Date.now();
       const searchResult = await search({
         query,
         date,
@@ -292,9 +293,15 @@ function createTool({
           onSearchResults: _onSearchResults,
         }),
       });
+      const durationMs = Date.now() - startTime;
       const turn = runnableConfig.toolCall?.turn ?? 0;
       const { output, references } = formatResultsForLLM(turn, searchResult);
-      const data: t.SearchResultData = { turn, ...searchResult, references };
+      const data: t.SearchResultData = {
+        turn,
+        ...searchResult,
+        references,
+        durationMs,
+      };
       return [output, { [Constants.WEB_SEARCH]: data }];
     },
     {
@@ -436,6 +443,7 @@ export const createSearchTool = (
     jinaApiKey,
     jinaApiUrl,
     cohereApiKey,
+    keenableApiKey,
     logger,
   });
 
