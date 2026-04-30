@@ -53,6 +53,7 @@ export interface KeenableScrapeResponse {
 export interface KeenableConfig {
   keenableApiKey?: string;
   keenableApiUrl?: string;
+  searchProfile?: string;
 }
 
 export interface KeenableScraperConfig extends KeenableConfig {
@@ -90,6 +91,7 @@ export const createKeenableSearchAPI = (
     process.env.KEENABLE_API_URL ??
     DEFAULT_BASE_URL
   ).replace(/\/+$/, '');
+  const searchProfile = config.searchProfile;
 
   if (!apiKey) {
     throw new Error(
@@ -132,6 +134,7 @@ export const createKeenableSearchAPI = (
         '/v1/search',
         {
           query,
+          ...(searchProfile ? { profile: searchProfile } : {}),
         }
       );
 

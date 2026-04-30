@@ -1,4 +1,3 @@
-
 import axios from 'axios';
 import {
   createKeenableSearchAPI,
@@ -64,6 +63,34 @@ describe('Keenable Search API', () => {
     expect(mockClient.post).toHaveBeenCalledWith('/v1/search', {
       query: 'who is Andrey Styskin',
     });
+  });
+
+  test('getSources forwards searchProfile as `profile` in the POST body', async () => {
+    mockClient.post.mockResolvedValueOnce({
+      data: { query: 'q', results: [] },
+    });
+
+    const api = createKeenableSearchAPI({
+      keenableApiKey: 'key',
+      searchProfile: 'deep',
+    });
+    await api.getSources({ query: 'q' });
+
+    expect(mockClient.post).toHaveBeenCalledWith('/v1/search', {
+      query: 'q',
+      profile: 'deep',
+    });
+  });
+
+  test('getSources omits profile when searchProfile is unset', async () => {
+    mockClient.post.mockResolvedValueOnce({
+      data: { query: 'q', results: [] },
+    });
+
+    const api = createKeenableSearchAPI({ keenableApiKey: 'key' });
+    await api.getSources({ query: 'q' });
+
+    expect(mockClient.post).toHaveBeenCalledWith('/v1/search', { query: 'q' });
   });
 
   test('getSources rejects empty queries without calling the API', async () => {

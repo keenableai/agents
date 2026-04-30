@@ -421,6 +421,7 @@ export const createSearchAPI = (
     searxngApiKey,
     keenableApiKey,
     keenableApiUrl,
+    searchProfile,
   } = config;
 
   const providerKey = searchProvider.toLowerCase();
@@ -429,7 +430,11 @@ export const createSearchAPI = (
   } else if (providerKey === 'searxng') {
     return createSearXNGAPI(searxngInstanceUrl, searxngApiKey);
   } else if (providerKey === 'keenable') {
-    return createKeenableSearchAPI({ keenableApiKey, keenableApiUrl });
+    return createKeenableSearchAPI({
+      keenableApiKey,
+      keenableApiUrl,
+      searchProfile,
+    });
   } else {
     throw new Error(
       `Invalid search provider: ${searchProvider}. Must be 'serper', 'searxng', or 'keenable'`

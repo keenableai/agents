@@ -71,6 +71,7 @@ export interface SearchConfig {
   searxngApiKey?: string;
   keenableApiKey?: string;
   keenableApiUrl?: string;
+  searchProfile?: string;
 }
 
 export type References = {
