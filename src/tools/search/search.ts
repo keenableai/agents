@@ -600,6 +600,19 @@ export const createSourceProcessor = (
     onGetHighlights,
   }: t.ProcessSourcesFields): Promise<t.SearchResultData> => {
     try {
+      /** Snippet-only mode: when the consumer sets `topResults: 0` in
+       *  createSourceProcessor config, skip all per-source scraping +
+       *  reranking and return whatever /v1/search produced as-is. */
+      if (topResults === 0) {
+        return (
+          result.data ?? {
+            organic: [],
+            topStories: [],
+            images: [],
+            relatedSearches: [],
+          }
+        );
+      }
       if (!result.data) {
         return {
           organic: [],
