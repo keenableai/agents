@@ -361,6 +361,7 @@ export const createSearchTool = (
     searxngApiKey,
     keenableApiKey,
     keenableApiUrl,
+    searchProfile,
     rerankerType = 'cohere',
     topResults = 5,
     strategies = ['no_extraction'],
@@ -407,6 +408,7 @@ export const createSearchTool = (
     searxngApiKey,
     keenableApiKey,
     keenableApiUrl,
+    searchProfile,
   });
 
   /** Create scraper based on scraperProvider */

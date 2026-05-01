@@ -53,6 +53,7 @@ export interface KeenableScrapeResponse {
 export interface KeenableConfig {
   keenableApiKey?: string;
   keenableApiUrl?: string;
+  searchProfile?: string;
 }
 
 export interface KeenableScraperConfig extends KeenableConfig {
@@ -65,7 +66,7 @@ function buildClient(
   baseURL: string,
   timeout: number
 ): AxiosInstance {
-  return axios.create({
+  const client = axios.create({
     baseURL,
     timeout,
     headers: {
@@ -73,6 +74,73 @@ function buildClient(
       'Content-Type': 'application/json',
     },
   });
+
+  // Defensive: jest mocks of axios.create may return objects without interceptors.
+  const interceptors = client.interceptors as
+    | typeof client.interceptors
+    | undefined;
+  if (!interceptors || !interceptors.request) {
+    return client;
+  }
+
+  client.interceptors.request.use((config) => {
+    (config as { _keenT0?: number })._keenT0 = Date.now();
+    const method = (config.method ?? 'GET').toUpperCase();
+    const url = `${config.baseURL ?? ''}${config.url ?? ''}`;
+    const qs = config.params
+      ? '?' +
+        new URLSearchParams(config.params as Record<string, string>).toString()
+      : '';
+    const bodyPreview =
+      config.data != null
+        ? ' body=' +
+          (typeof config.data === 'string'
+            ? config.data
+            : JSON.stringify(config.data)
+          ).slice(0, 300)
+        : '';
+    // eslint-disable-next-line no-console
+    console.log(`[Keenable][HTTP] --> ${method} ${url}${qs}${bodyPreview}`);
+    return config;
+  });
+
+  client.interceptors.response.use(
+    (response) => {
+      const t0 = (response.config as { _keenT0?: number })._keenT0;
+      const ms = t0 != null ? Date.now() - t0 : -1;
+      const size =
+        typeof response.data === 'string'
+          ? response.data.length
+          : JSON.stringify(response.data ?? '').length;
+      // eslint-disable-next-line no-console
+      console.log(
+        `[Keenable][HTTP] <-- ${response.status} ${response.config.url ?? ''} size=${size} ms=${ms}`
+      );
+      return response;
+    },
+    (error) => {
+      const cfg = error.config as
+        | { _keenT0?: number; url?: string }
+        | undefined;
+      const t0 = cfg?._keenT0;
+      const ms = t0 != null ? Date.now() - t0 : -1;
+      const status = error.response?.status ?? 0;
+      const bodyPreview = error.response?.data
+        ? ' body=' +
+          (typeof error.response.data === 'string'
+            ? error.response.data
+            : JSON.stringify(error.response.data)
+          ).slice(0, 300)
+        : ` err=${error.message}`;
+      // eslint-disable-next-line no-console
+      console.log(
+        `[Keenable][HTTP] <-- ${status} ${cfg?.url ?? ''} ERROR ms=${ms}${bodyPreview}`
+      );
+      return Promise.reject(error);
+    }
+  );
+
+  return client;
 }
 
 /**
@@ -90,6 +158,7 @@ export const createKeenableSearchAPI = (
     process.env.KEENABLE_API_URL ??
     DEFAULT_BASE_URL
   ).replace(/\/+$/, '');
+  const searchProfile = config.searchProfile;
 
   if (!apiKey) {
     throw new Error(
@@ -127,11 +196,13 @@ export const createKeenableSearchAPI = (
       };
     }
 
+    const t0 = Date.now();
     try {
       const response = await client.post<KeenableSearchResponseDTO>(
         '/v1/search',
         {
           query,
+          ...(searchProfile ? { profile: searchProfile } : {}),
         }
       );
 
@@ -141,6 +212,11 @@ export const createKeenableSearchAPI = (
         link: r.url,
         snippet: r.snippet ?? r.description,
       }));
+
+      // eslint-disable-next-line no-console
+      console.log(
+        `[Keenable][search] query=${JSON.stringify(query)} profile=${searchProfile ?? '(none)'} results=${organic.length} ms=${Date.now() - t0}`
+      );
 
       return {
         success: true,
@@ -156,6 +232,10 @@ export const createKeenableSearchAPI = (
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
+      // eslint-disable-next-line no-console
+      console.log(
+        `[Keenable][search] query=${JSON.stringify(query)} ERROR ms=${Date.now() - t0} err=${errorMessage}`
+      );
       return {
         success: false,
         error: `Keenable search failed: ${errorMessage}`,
@@ -203,6 +283,7 @@ export class KeenableScraper implements t.BaseScraper {
     if (!this.apiKey) {
       return [url, { success: false, error: 'KEENABLE_API_KEY is not set' }];
     }
+    const t0 = Date.now();
     try {
       const response = await this.client.get<KeenableFetchResponseDTO>(
         '/v1/fetch',
@@ -211,6 +292,10 @@ export class KeenableScraper implements t.BaseScraper {
         }
       );
       const data = response.data;
+      // eslint-disable-next-line no-console
+      console.log(
+        `[Keenable][fetch] url=${url} bytes=${(data.content ?? '').length} ms=${Date.now() - t0}`
+      );
       return [
         url,
         {
@@ -230,6 +315,10 @@ export class KeenableScraper implements t.BaseScraper {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
+      // eslint-disable-next-line no-console
+      console.log(
+        `[Keenable][fetch] url=${url} ERROR ms=${Date.now() - t0} err=${errorMessage}`
+      );
       return [
         url,
         { success: false, error: `Keenable fetch failed: ${errorMessage}` },
