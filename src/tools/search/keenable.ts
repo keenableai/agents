@@ -75,7 +75,11 @@ function buildClient(
     },
   });
 
-  if (!client.interceptors.request.use) {
+  // Defensive: jest mocks of axios.create may return objects without interceptors.
+  const interceptors = client.interceptors as
+    | typeof client.interceptors
+    | undefined;
+  if (!interceptors || !interceptors.request) {
     return client;
   }
 
