@@ -129,6 +129,7 @@ export const createKeenableSearchAPI = (
       };
     }
 
+    const t0 = Date.now();
     try {
       const response = await client.post<KeenableSearchResponseDTO>(
         '/v1/search',
@@ -145,6 +146,11 @@ export const createKeenableSearchAPI = (
         snippet: r.snippet ?? r.description,
       }));
 
+      // eslint-disable-next-line no-console
+      console.log(
+        `[Keenable][search] query=${JSON.stringify(query)} profile=${searchProfile ?? '(none)'} results=${organic.length} ms=${Date.now() - t0}`
+      );
+
       return {
         success: true,
         data: {
@@ -159,6 +165,10 @@ export const createKeenableSearchAPI = (
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
+      // eslint-disable-next-line no-console
+      console.log(
+        `[Keenable][search] query=${JSON.stringify(query)} ERROR ms=${Date.now() - t0} err=${errorMessage}`
+      );
       return {
         success: false,
         error: `Keenable search failed: ${errorMessage}`,
@@ -206,6 +216,7 @@ export class KeenableScraper implements t.BaseScraper {
     if (!this.apiKey) {
       return [url, { success: false, error: 'KEENABLE_API_KEY is not set' }];
     }
+    const t0 = Date.now();
     try {
       const response = await this.client.get<KeenableFetchResponseDTO>(
         '/v1/fetch',
@@ -214,6 +225,10 @@ export class KeenableScraper implements t.BaseScraper {
         }
       );
       const data = response.data;
+      // eslint-disable-next-line no-console
+      console.log(
+        `[Keenable][fetch] url=${url} bytes=${(data.content ?? '').length} ms=${Date.now() - t0}`
+      );
       return [
         url,
         {
@@ -233,6 +248,10 @@ export class KeenableScraper implements t.BaseScraper {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
+      // eslint-disable-next-line no-console
+      console.log(
+        `[Keenable][fetch] url=${url} ERROR ms=${Date.now() - t0} err=${errorMessage}`
+      );
       return [
         url,
         { success: false, error: `Keenable fetch failed: ${errorMessage}` },
