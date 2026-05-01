@@ -66,7 +66,7 @@ function buildClient(
   baseURL: string,
   timeout: number
 ): AxiosInstance {
-  return axios.create({
+  const client = axios.create({
     baseURL,
     timeout,
     headers: {
@@ -74,6 +74,69 @@ function buildClient(
       'Content-Type': 'application/json',
     },
   });
+
+  if (!client.interceptors.request.use) {
+    return client;
+  }
+
+  client.interceptors.request.use((config) => {
+    (config as { _keenT0?: number })._keenT0 = Date.now();
+    const method = (config.method ?? 'GET').toUpperCase();
+    const url = `${config.baseURL ?? ''}${config.url ?? ''}`;
+    const qs = config.params
+      ? '?' +
+        new URLSearchParams(config.params as Record<string, string>).toString()
+      : '';
+    const bodyPreview =
+      config.data != null
+        ? ' body=' +
+          (typeof config.data === 'string'
+            ? config.data
+            : JSON.stringify(config.data)
+          ).slice(0, 300)
+        : '';
+    // eslint-disable-next-line no-console
+    console.log(`[Keenable][HTTP] --> ${method} ${url}${qs}${bodyPreview}`);
+    return config;
+  });
+
+  client.interceptors.response.use(
+    (response) => {
+      const t0 = (response.config as { _keenT0?: number })._keenT0;
+      const ms = t0 != null ? Date.now() - t0 : -1;
+      const size =
+        typeof response.data === 'string'
+          ? response.data.length
+          : JSON.stringify(response.data ?? '').length;
+      // eslint-disable-next-line no-console
+      console.log(
+        `[Keenable][HTTP] <-- ${response.status} ${response.config.url ?? ''} size=${size} ms=${ms}`
+      );
+      return response;
+    },
+    (error) => {
+      const cfg = error.config as
+        | { _keenT0?: number; url?: string }
+        | undefined;
+      const t0 = cfg?._keenT0;
+      const ms = t0 != null ? Date.now() - t0 : -1;
+      const status = error.response?.status ?? 0;
+      const bodyPreview = error.response?.data
+        ? ' body=' +
+          (typeof error.response.data === 'string'
+            ? error.response.data
+            : JSON.stringify(error.response.data)
+          ).slice(0, 300)
+        : ` err=${error.message}`;
+      // eslint-disable-next-line no-console
+      console.log(
+        `[Keenable][HTTP] <-- ${status} ${cfg?.url ?? ''} ERROR ms=${ms}${bodyPreview}`
+      );
+      return Promise.reject(error);
+    }
+  );
+
+  return client;
 }
 
 /**
